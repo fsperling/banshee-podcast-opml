@@ -12,27 +12,30 @@ require 'rubygems'
 require 'builder'
 require 'sqlite3'
 
-USER = ''
-EMAIL = ''
-DB_FILE = "#{ENV['HOME']}/download/Dropbox/Database.db"
+USER = 'username'
+EMAIL = 'user@domain.de'
+DB_FILE = "#{ENV['HOME']}/download/github/banshee-podcast-opml/Database.db"
 
 class Podcast
-  attr_reader :title, :description, :url
+  attr_reader :title, :htmlurl, :url, :type
 
-  def initialize title, description, url
+  def initialize title, htmlurl, url, type
     @title = title
-    @description = description
+    @htmlurl = htmlurl
     @url = url
+    @type = type
   end
 end
 
 podcasts = []
 db = SQLite3::Database.new(DB_FILE)
 db.execute 'select * from Feed ' do |row|
-  podcasts << Podcast.new(row[6], row[9], row[4])
+  podcasts << Podcast.new(row[6], row[9], row[4], row[3])
 end
 
-xml = Builder::XmlMarkup.new(:target => STDOUT)
+f = File.new("result.opml", "w")  
+
+xml = Builder::XmlMarkup.new(:target => f, :indent => 2)
 xml.instruct!
 xml.opml(:version => 1.1) do
   xml.head do
@@ -45,12 +48,16 @@ xml.opml(:version => 1.1) do
   xml.body do
     podcasts.each do |podcast|
       title = podcast.title
-      xml.outline(:type => 'rss', :version => 'RSS', 
-                  :description => podcast.description,
+      xml.outline(:type => podcast.type, :version => 'RSS', 
+                  :description => "",
                   :title => title, :text => title, 
-                   :xmlUrl => podcast.url)
+                   :xmlUrl => podcast.url,
+		   :htmlUrl => podcast.htmlurl)
+      xml.text! "\n"
 
     end
   end
 end
+
+f.close()
 
